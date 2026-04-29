@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manuel Zapata: El Avellanero</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a0e05;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:'Press Start 2P',monospace}
+canvas{display:block;border:3px solid #8B4513;border-radius:4px;box-shadow:0 0 40px rgba(139,69,19,.5),0 0 80px rgba(139,69,19,.18)}
+.ctrl{color:#2a2010;font-size:6px;text-align:center;margin-top:6px;letter-spacing:1px}
+</style>
+</head>
+<body>
+<canvas id="c" width="820" height="340"></canvas>
+<div class="ctrl">ESPACIO / ↑ / CLICK: saltar &nbsp;|&nbsp; Recoge avellanas 🌰 · Evita los ladrones · ¡Llena el saco!</div>
+<script>
+'use strict';
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+const W=820,H=340,GY=272;
+const SACK_MAX=12;
+
+let GS='menu',tick=0,score=0,hi=0,dist=0,spd=3.2;
+let avellanas=[],thieves=[],parts=[],floats=[],trees=[],branches=[],bodegas=[];
+let avTmr=60,thTmr=280,treeTmr=120,branchTmr=180,bodegaTmr=800;
+let sack=0,sackAnim=0; // sack = avellanas actualmente cargadas
+let shakeT=0;
+
+// BG layers
+const bgLayers=[
+  {items:[],spd:.12,color:'#c8a870'},
+  {items:[],spd:.28,color:'#a07840'},
+  {items:[],spd:.55,color:'#7a5220'},
+];
+for(let i=0;i<8;i++) bgLayers[0].items.push({x:i*110+30,h:40+Math.random()*30,w:80+Math.random()*40});
+for(let i=0;i<5;i++) bgLayers[1].items.push({x:i*180+60,h:60+Math.random()*40,w:120+Math.random()*50});
+for(let i=0;i<16;i++) bgLayers[2].items.push({x:i*55+Math.random()*20,t:Math.floor(Math.random()*3)});
+
+// Player
+const PL={
+  x:130,y:GY,vy:0,gr:true,
+  wFr:0,JUMP:-13.2,GRAV:.55,
+  w:28,h:52,
+  iframes:0,dead:false,deathTmr:0,
+};
+
+// ── HELPERS ──
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const rndi=(a,b)=>Math.floor(rnd(a,b+1));
+function shake(n=6){shakeT=Math.max(shakeT,n);}
+function part(x,y,col,n=8,sp=3.5,r=4,life=28){
+  for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=sp*(.5+Math.random());
+    parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,col,r,life,max:life});}
+}
+function float(x,y,txt,col='#fff',sz=10){floats.push({x,y,vy:-1.4,txt,col,sz,life:55,max:55});}
+
+// ── INPUT ──
+const keys={};
+document.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(['Space','ArrowUp'].includes(e.code))e.preventDefault();
+  if((e.code==='Space'||e.code==='ArrowUp')&&(GS==='menu'||GS==='gameover'))startGame();
+});
+document.addEventListener('keyup',e=>keys[e.code]=false);
+cv.addEventListener('click',()=>{if(GS==='menu'||GS==='gameover')startGame();else jump();});
+
+function jump(){if(PL.gr&&!PL.dead){PL.vy=PL.JUMP;PL.gr=false;part(PL.x+PL.w/2,GY+4,'rgba(160,110,50,',5,2,3,14);}}
+
+// ── SPAWN ──
+function spawnAvellana(){
+  // aleatoriamente en el suelo o ligeramente flotando de un árbol
+  const fromTree=Math.random()>.45;
+  const ay=fromTree?GY-20-Math.random()*40:GY-2;
+  avellanas.push({x:W+20,y:ay,bob:Math.random()*Math.PI*2,dead:false,fromTree});
+}
+function spawnThief(){
+  const types=['old_lady','kid','fast_guy'];
+  const t=types[rndi(0,2)];
+  const sp=t==='fast_guy'?spd*1.55:t==='kid'?spd*1.2:spd*.85;
+  thieves.push({x:W+40,y:GY,type:t,spd:sp,dead:false,deathTmr:0,wFr:0,fr:0,stealing:0});
+}
+function spawnTree(){
+  trees.push({x:W+20,w:rndi(40,70),h:rndi(70,130),fr:0});
+}
+
+// ── DRAW MANUEL ──
+function drawManuel(x,y,iframes,dead2){
+  if(dead2&&Math.floor(tick/5)%2===0)return;
+  if(!dead2&&iframes>0&&Math.floor(tick/4)%2===0)return;
+  const wk=PL.gr?Math.sin(PL.wFr*Math.PI)*5:0;
+  g.save();g.translate(x,y);
+
+  // Shadow
+  g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(PL.w/2,4,18,5,0,0,Math.PI*2);g.fill();
+
+  // SACK on back (fills up visually)
+  const sackFill=sack/SACK_MAX;
+  g.fillStyle=`rgba(139,90,20,${.7+sackFill*.3})`;
+  g.beginPath();g.ellipse(-10,PL.h*.38,10+sackFill*6,12+sackFill*8,0,0,Math.PI*2);g.fill();
+  g.strokeStyle='#5a3008';g.lineWidth=1.5;g.stroke();
+  // Sack tie
+  g.strokeStyle='#8B4513';g.lineWidth=2;
+  g.beginPath();g.moveTo(-2,PL.h*.22);g.lineTo(-10,PL.h*.28);g.stroke();
+  // Fill indicator dots on sack
+  if(sack>0){
+    g.fillStyle='#d4a020';
+    for(let i=0;i<Math.min(sack,6);i++){
+      g.beginPath();g.arc(-14+i%3*4,PL.h*.36+(Math.floor(i/3))*4,2,0,Math.PI*2);g.fill();
+    }
+  }
+
+  // Legs
+  g.fillStyle='#5a3a10';
+  g.fillRect(3+wk*.4, PL.h-16, 9, 16);
+  g.fillRect(14-wk*.4, PL.h-16, 9, 16);
+  // Boots
+  g.fillStyle='#2a1a00';
+  g.fillRect(1+wk*.4, PL.h-6, 12, 7);
+  g.fillRect(12-wk*.4, PL.h-6, 12, 7);
+
+  // Body (poncho style)
+  g.fillStyle='#7a3010';
+  g.beginPath();g.moveTo(-2,PL.h*.35);g.lineTo(PL.w+2,PL.h*.35);g.lineTo(PL.w+6,PL.h*.72);g.lineTo(-6,PL.h*.72);g.closePath();g.fill();
+  // Poncho stripe
+  g.fillStyle='#cc6020';
+  g.beginPath();g.moveTo(0,PL.h*.45);g.lineTo(PL.w,PL.h*.45);g.lineTo(PL.w+3,PL.h*.52);g.lineTo(-3,PL.h*.52);g.closePath();g.fill();
+  // Arms
+  g.fillStyle='#7a3010';
+  g.fillRect(-7+wk*.3,PL.h*.38,8,18);
+  g.fillRect(PL.w-1-wk*.3,PL.h*.38,8,18);
+  // Hands
+  g.fillStyle='#c8845a';
+  g.beginPath();g.arc(-4+wk*.3,PL.h*.62,5,0,Math.PI*2);g.fill();
+  g.beginPath();g.arc(PL.w+3-wk*.3,PL.h*.62,5,0,Math.PI*2);g.fill();
+
+  // ── BIG HEAD (the star of the show) ──
+  const hx=PL.w/2,hy=PL.h*.25;
+  // Neck
+  g.fillStyle='#c8845a';g.fillRect(hx-5,hy,10,8);
+  // Head (very big relative to body)
+  g.fillStyle='#d4956a';
+  g.beginPath();g.ellipse(hx,hy-22,22,24,0,0,Math.PI*2);g.fill();
+  // Cheeks (rosy)
+  g.fillStyle='rgba(220,100,60,.25)';
+  g.beginPath();g.ellipse(hx-14,hy-15,8,6,0,0,Math.PI*2);g.fill();
+  g.beginPath();g.ellipse(hx+14,hy-15,8,6,0,0,Math.PI*2);g.fill();
+  // Eyebrows (bushy)
+  g.fillStyle='#2a1800';g.fillRect(hx-16,hy-34,12,4);g.fillRect(hx+4,hy-34,12,4);
+  // Eyes
+  g.fillStyle='white';g.fillRect(hx-15,hy-31,11,9);g.fillRect(hx+4,hy-31,11,9);
+  g.fillStyle='#3a2010';g.fillRect(hx-13,hy-29,7,7);g.fillRect(hx+6,hy-29,7,7);
+  g.fillStyle='white';g.fillRect(hx-12,hy-28,3,3);g.fillRect(hx+7,hy-28,3,3);
+  // Nose (big!)
+  g.fillStyle='#b87050';
+  g.beginPath();g.arc(hx,hy-18,6,0,Math.PI*2);g.fill();
+  g.fillStyle='#8a4030';g.beginPath();g.arc(hx-3,hy-16,2,0,Math.PI*2);g.fill();
+  g.beginPath();g.arc(hx+3,hy-16,2,0,Math.PI*2);g.fill();
+  // Mouth (big smile or worried if sack full)
+  g.strokeStyle='#5a2a10';g.lineWidth=2;
+  if(sack>=SACK_MAX){
+    // worried - sack full!
+    g.beginPath();g.arc(hx,hy-10,6,Math.PI,0);g.stroke();
+  } else {
+    g.beginPath();g.arc(hx,hy-14,5,.1,Math.PI-.1);g.stroke();
+  }
+  // Mustache
+  g.fillStyle='#1a0e00';
+  g.beginPath();g.ellipse(hx-5,hy-12,6,3,-.2,0,Math.PI*2);g.fill();
+  g.beginPath();g.ellipse(hx+5,hy-12,6,3,.2,0,Math.PI*2);g.fill();
+  // Hat (big straw hat - must match the big head)
+  g.fillStyle='#c8a020';
+  g.beginPath();g.ellipse(hx,hy-44,26,6,0,0,Math.PI*2);g.fill(); // brim
+  g.fillStyle='#d4aa30';
+  g.fillRect(hx-16,hy-62,32,20); // crown
+  g.beginPath();g.ellipse(hx,hy-62,16,5,0,0,Math.PI*2);g.fill(); // top
+  g.fillStyle='#8B4513';g.fillRect(hx-16,hy-46,32,4); // hatband
+  g.fillStyle='rgba(255,220,100,.18)';g.fillRect(hx-14,hy-60,28,6); // shine
+  g.restore();
+}
+
+// ── DRAW THIEVES ──
+function drawThief(t){
+  if(t.dead)return;
+  const ex=t.x,ey=t.y;
+  const wk=Math.sin(t.wFr*Math.PI)*5;
+  g.save();g.translate(ex,ey);g.scale(-1,1); // facing left (toward player)
+
+  if(t.type==='old_lady'){
+    // Abuela ladrona
+    g.fillStyle='#444';g.fillRect(-8,wk*.3+36,10,10);g.fillRect(6,(-wk*.3)+36,10,10);
+    g.fillStyle='#333';g.fillRect(-8,wk*.3+42,11,5);g.fillRect(6,-wk*.3+42,11,5);
+    g.fillStyle='#6a2a6a';g.fillRect(-10,14,28,24);
+    g.fillStyle='#552255';g.fillRect(-4,14,4,24);g.fillRect(4,14,4,24);
+    g.fillStyle='#6a2a6a';g.fillRect(-14,16,6,16);g.fillRect(22,16,6,16);
+    // Carrito (to steal avellanas)
+    g.fillStyle='#884488';
+    g.fillRect(22,24,20,14);
+    g.strokeStyle='#553355';g.lineWidth=2;g.strokeRect(22,24,20,14);
+    g.fillStyle='#333';g.beginPath();g.arc(25,38,4,0,Math.PI*2);g.fill();g.beginPath();g.arc(39,38,4,0,Math.PI*2);g.fill();
+    // Head
+    g.fillStyle='#d4956a';g.beginPath();g.arc(4,-4,13,0,Math.PI*2);g.fill();
+    g.fillStyle='white';g.fillRect(-5,-11,12,5);g.fillRect(1,-11,12,5); // hair
+    g.fillStyle='#1a1a1a';g.fillRect(-3,-8,5,5);g.fillRect(4,-8,5,5); // eyes
+    g.strokeStyle='#5a2a10';g.lineWidth=1.5;g.beginPath();g.arc(3,0,4,.1,Math.PI-.1);g.stroke(); // smile
+    if(t.stealing>0){g.fillStyle='rgba(255,50,50,.7)';g.font='8px serif';g.textAlign='center';g.fillText('😈',4,-18);g.textAlign='left';}
+  } else if(t.type==='kid'){
+    // Cabro chico corriendo
+    g.fillStyle='#333';g.fillRect(-4,wk*.3+28,8,8);g.fillRect(6,-wk*.3+28,8,8);
+    g.fillStyle='#cc2200';g.fillRect(-6,12,20,18);
+    g.fillStyle='#cc2200';g.fillRect(-10,14,6,12);g.fillRect(18,14,6,12);
+    g.fillStyle='#d4956a';g.beginPath();g.arc(4,-2,11,0,Math.PI*2);g.fill();
+    g.fillStyle='#1a1a44';g.fillRect(-10,-10,24,4); // cap
+    g.fillRect(-2,-16,12,8);
+    g.fillStyle='#1a1a1a';g.fillRect(-3,-6,4,4);g.fillRect(5,-6,4,4);
+    g.strokeStyle='#5a2a10';g.lineWidth=1.5;g.beginPath();g.arc(3,0,3,.1,Math.PI-.1);g.stroke();
+    if(t.stealing>0){g.fillStyle='rgba(255,80,0,.7)';g.font='8px serif';g.textAlign='center';g.fillText('😜',4,-16);g.textAlign='left';}
+  } else {
+    // Tipo rápido y sospechoso
+    g.fillStyle='#222';g.fillRect(-5,wk*.3+34,9,10);g.fillRect(8,-wk*.3+34,9,10);
+    g.fillStyle='#111';g.fillRect(-5,wk*.3+40,10,5);g.fillRect(8,-wk*.3+40,10,5);
+    g.fillStyle='#222244';g.fillRect(-8,10,24,26);
+    g.fillStyle='#111';g.fillRect(-12,12,6,14);g.fillRect(22,12,6,14);
+    g.fillStyle='#d4956a';g.beginPath();g.arc(4,-3,12,0,Math.PI*2);g.fill();
+    g.fillStyle='#111';g.fillRect(-10,-14,28,4);g.fillRect(-2,-22,12,10);
+    g.fillStyle='#1a1a1a';g.fillRect(-2,-8,4,5);g.fillRect(6,-8,4,5);
+    g.strokeStyle='#5a2a10';g.lineWidth=1.5;g.beginPath();g.arc(3,0,4,.1,Math.PI-.1);g.stroke();
+    if(t.stealing>0){g.fillStyle='rgba(255,200,0,.7)';g.font='8px serif';g.textAlign='center';g.fillText('🤑',4,-17);g.textAlign='left';}
+  }
+  g.restore();
+}
+
+// ── DRAW AVELLANA ──
+function drawAvellana(a){
+  if(a.dead)return;
+  const bob=Math.sin(tick*.07+a.bob)*4;
+  const ax=a.x-4,ay=a.y-10+bob;
+  // Glow
+  g.fillStyle='rgba(180,130,30,.22)';g.beginPath();g.arc(ax+4,ay+5,16,0,Math.PI*2);g.fill();
+  // Cap (cupule)
+  g.fillStyle='#5a3a10';
+  g.beginPath();g.arc(ax+4,ay,8,.9,Math.PI-.9);g.lineTo(ax-2,ay+2);g.arc(ax+4,ay+2,6,.9+Math.PI,-.9+Math.PI);g.closePath();g.fill();
+  // Nut body
+  const grad=g.createRadialGradient(ax+2,ay+4,1,ax+4,ay+5,7);
+  grad.addColorStop(0,'#d4a030');grad.addColorStop(.5,'#a87020');grad.addColorStop(1,'#7a4a10');
+  g.fillStyle=grad;g.beginPath();g.ellipse(ax+4,ay+6,6,8,-.1,0,Math.PI*2);g.fill();
+  g.fillStyle='rgba(255,200,80,.22)';g.fillRect(ax+1,ay+2,3,4); // shine
+  if(a.fromTree){
+    // small stem
+    g.strokeStyle='#3a2008';g.lineWidth=1.5;g.beginPath();g.moveTo(ax+4,ay-2);g.lineTo(ax+4,ay-7);g.stroke();
+  }
+}
+
+// ── DRAW TREE ──
+function drawTree(t){
+  const tx=t.x;
+  const sw=Math.sin(t.fr*.03)*2;
+  // Trunk
+  g.fillStyle='#5a3010';g.fillRect(tx+t.w*.35,GY-t.h*.55,t.w*.3,t.h*.58);
+  // Foliage layers (avellano style)
+  g.fillStyle='#2a6a18';
+  g.beginPath();g.ellipse(tx+t.w/2+sw,GY-t.h*.7,t.w*.55,t.h*.42,0,0,Math.PI*2);g.fill();
+  g.fillStyle='#38882a';
+  g.beginPath();g.ellipse(tx+t.w/2+sw*.5,GY-t.h*.82,t.w*.42,t.h*.35,0,0,Math.PI*2);g.fill();
+  g.fillStyle='#206010';
+  g.beginPath();g.ellipse(tx+t.w/2-sw*.3,GY-t.h*.62,t.w*.38,t.h*.28,.2,0,Math.PI*2);g.fill();
+  // Avellanas on tree
+  for(let i=0;i<4;i++){
+    const nx=tx+t.w*.2+i*(t.w*.18)+Math.sin(t.fr*.04+i)*3;
+    const ny=GY-t.h*.7+(i%2)*12;
+    g.fillStyle='#8a5510';g.beginPath();g.arc(nx,ny,3,Math.PI,0);g.fill();
+    g.fillStyle='#b07820';g.beginPath();g.ellipse(nx,ny+3,3,4,0,0,Math.PI*2);g.fill();
+  }
+}
+
+// ── DRAW BRANCH (obstacle at jump height) ──
+function drawBranch(b){
+  const bx=b.x,by=b.y;
+  g.fillStyle='#5a3010';
+  g.save();g.translate(bx,by);g.rotate(b.angle);
+  g.fillRect(-b.len/2,-5,b.len,10);
+  // Leaves
+  g.fillStyle='#2a6a18';
+  for(let i=0;i<5;i++){
+    const lx=-b.len*.4+i*(b.len*.2),ly=-5-Math.random()*2;
+    g.beginPath();g.ellipse(lx,ly-8,10,6,b.angle*.5,0,Math.PI*2);g.fill();
+  }
+  g.restore();
+  // Warning indicator when close
+  if(b.x<PL.x+280&&b.x>PL.x-20){
+    const a=Math.sin(tick*.18)*.4+.6;
+    g.fillStyle=`rgba(255,80,0,${a})`;g.font='14px serif';g.textAlign='center';
+    g.fillText('⚠',bx,by-22);g.textAlign='left';
+  }
+}
+
+// ── DRAW BODEGA (deposit station) ──
+function drawBodega(b){
+  const bx=b.x,by=GY-52;
+  // Glow when sack is full
+  if(sack>=SACK_MAX){
+    const ga=.3+Math.sin(tick*.1)*.2;
+    g.fillStyle=`rgba(255,210,0,${ga})`;g.beginPath();g.arc(bx+22,by+26,50,0,Math.PI*2);g.fill();
+  }
+  // Shed
+  g.fillStyle='#7a4a18';g.fillRect(bx,by+16,44,36);
+  g.fillStyle='#5a3010';
+  g.beginPath();g.moveTo(bx-6,by+16);g.lineTo(bx+22,by-4);g.lineTo(bx+50,by+16);g.closePath();g.fill();
+  g.fillStyle='#c8a030';g.fillRect(bx+14,by+28,16,24); // door
+  g.fillStyle='#8B4513';g.fillRect(bx+26,by+38,4,4); // door knob
+  // Sign
+  g.fillStyle='#fff8d0';g.fillRect(bx+2,by+18,40,12);
+  g.fillStyle='#5a3010';g.font='6px "Press Start 2P",monospace';g.textAlign='center';
+  g.fillText('BODEGA',bx+22,by+27);g.textAlign='left';
+  // Sack emoji above
+  g.font='18px serif';g.textAlign='center';
+  g.fillText('👜',bx+22,by+6);g.textAlign='left';
+  // Flash arrow if sack full
+  if(sack>=SACK_MAX){
+    const a2=Math.sin(tick*.12)*.5+.5;
+    g.fillStyle=`rgba(255,200,0,${a2})`;g.font='9px "Press Start 2P",monospace';g.textAlign='center';
+    g.fillText('▼ DEPOSITA ▼',bx+22,by-16);g.textAlign='left';
+  }
+}
+
+// ── BG ──
+function drawBG(){
+  const sky=g.createLinearGradient(0,0,0,GY);
+  sky.addColorStop(0,'#6aaa4a');sky.addColorStop(1,'#9acc70');
+  g.fillStyle=sky;g.fillRect(0,0,W,GY);
+  // Distant hills
+  g.fillStyle='rgba(100,160,60,.35)';
+  for(const h of bgLayers[0].items){
+    h.x-=spd*bgLayers[0].spd;if(h.x<-h.w)h.x=W+h.w;
+    g.beginPath();g.moveTo(h.x,GY);g.bezierCurveTo(h.x+h.w*.25,GY-h.h*1.2,h.x+h.w*.75,GY-h.h*1.2,h.x+h.w,GY);g.closePath();g.fill();
+  }
+  // Trees in back
+  for(const t of trees){
+    t.x-=spd;t.fr++;
+    drawTree(t);
+  }
+  // Ground
+  const gnd=g.createLinearGradient(0,GY,0,H);
+  gnd.addColorStop(0,'#7a5230');gnd.addColorStop(.15,'#6a4220');gnd.addColorStop(1,'#3a2010');
+  g.fillStyle=gnd;g.fillRect(0,GY,W,H-GY);
+  g.fillStyle='#4a8a28';g.fillRect(0,GY,W,5);
+  g.fillStyle='#5aaa38';g.fillRect(0,GY,W,2);
+  // Ground deco (grass tufts, small rocks)
+  for(const d of bgLayers[2].items){
+    d.x-=spd;if(d.x<-20)d.x=W+20;
+    if(d.t===0){g.fillStyle='#4a7a28';g.fillRect(d.x-1,GY-7,2,8);g.fillRect(d.x+2,GY-5,2,6);g.fillRect(d.x-3,GY-5,2,6);}
+    else if(d.t===1){g.fillStyle='#8a6a40';g.beginPath();g.ellipse(d.x,GY+4,6,4,0,0,Math.PI*2);g.fill();}
+    else{g.fillStyle='#3a6a20';g.fillRect(d.x,GY-3,4,4);}
+  }
+}
+
+// ── SACK INDICATOR ──
+function drawSackHUD(){
+  const sx=10,sy=H-52,sw2=200,sh=22;
+  g.fillStyle='rgba(0,0,0,.55)';g.fillRect(sx-4,sy-18,sw2+8,sh+22);
+  g.fillStyle='rgba(80,40,10,.8)';g.fillRect(sx,sy,sw2,sh);
+  const pct=sack/SACK_MAX;
+  const bc=pct>=1?'#ff2200':pct>.6?'#ff8800':'#c8a020';
+  g.fillStyle=bc;g.fillRect(sx,sy,sw2*pct,sh);
+  g.strokeStyle='#5a3010';g.lineWidth=2;g.strokeRect(sx,sy,sw2,sh);
+  // Dividers
+  for(let i=1;i<SACK_MAX;i++){
+    g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=1;
+    g.beginPath();g.moveTo(sx+sw2/SACK_MAX*i,sy);g.lineTo(sx+sw2/SACK_MAX*i,sy+sh);g.stroke();
+  }
+  g.fillStyle='#fff9e8';g.font='7px "Press Start 2P",monospace';g.textAlign='left';
+  g.fillText('SACO: '+sack+'/'+SACK_MAX,sx+4,sy-4);
+  if(sack>=SACK_MAX){
+    const a=Math.sin(tick*.15)*.4+.6;
+    g.fillStyle=`rgba(255,80,0,${a})`;g.font='7px "Press Start 2P",monospace';
+    g.fillText('¡SACO LLENO!',sx+sw2+8,sy+16);
+  }
+}
+
+// ── HUD ──
+function drawHUD(){
+  g.fillStyle='rgba(0,0,0,.6)';g.fillRect(0,0,W,38);
+  g.fillStyle='#d4a020';g.font='12px "Press Start 2P",monospace';g.textAlign='center';
+  g.fillText(String(Math.floor(score)).padStart(7,'0'),W/2,24);
+  g.fillStyle='#555';g.font='7px "Press Start 2P",monospace';
+  g.fillText('MEJOR '+String(Math.floor(hi)).padStart(7,'0'),W/2,34);
+  g.textAlign='right';g.fillStyle='#a08060';g.font='7px "Press Start 2P",monospace';
+  g.fillText('🌰 x'+Math.floor(score/50),W-10,24);
+  g.textAlign='left';
+  drawSackHUD();
+}
+
+// ── PARTICLES & FLOATS ──
+function drawParts(){
+  for(const p of parts){const a=p.life/p.max;g.fillStyle=p.col+a+')';g.beginPath();g.arc(p.x,p.y,p.r*(a*.5+.5),0,Math.PI*2);g.fill();}
+  g.textAlign='center';
+  for(const f of floats){const a=Math.min(f.life/f.max*2,1);g.globalAlpha=a;g.fillStyle=f.col;g.font=f.sz+'px "Press Start 2P",monospace';g.fillText(f.txt,f.x,f.y);g.globalAlpha=1;}
+  g.textAlign='left';
+}
+
+// ── UPDATE ──
+function update(){
+  if(GS!=='playing')return;
+  tick++;dist+=spd;
+  if(tick%300===0)spd=Math.min(spd+.20,9.5);
+
+  // Player physics
+  if(!PL.dead){
+    if(PL.iframes>0)PL.iframes--;
+    // Slower when sack full (encumbered!)
+    const fullPenalty=sack>=SACK_MAX?.72:1;
+    const wantJump=(keys['Space']||keys['ArrowUp']||keys['KeyW'])&&PL.gr;
+    if(wantJump){PL.vy=PL.JUMP;PL.gr=false;part(PL.x+PL.w/2,GY+2,'rgba(150,100,40,',4,2,3,12);}
+    PL.vy=Math.min(PL.vy+PL.GRAV,14);
+    PL.y+=PL.vy;
+    if(PL.y>=GY){PL.y=GY;PL.vy=0;PL.gr=true;}
+    if(PL.gr)PL.wFr+=.22*fullPenalty;
+    if(PL.y>H+80){if(score>hi)hi=score;GS='gameover';}
+  } else {
+    PL.deathTmr--;PL.vy+=.4;PL.y+=PL.vy;
+    if(PL.deathTmr<=0){if(score>hi)hi=score;GS='gameover';}
+  }
+
+  // Spawn
+  avTmr--;if(avTmr<=0){spawnAvellana();avTmr=rndi(50,120);}
+  thTmr--;if(thTmr<=0){spawnThief();thTmr=Math.max(100,rndi(160,360)-Math.floor(dist/600)*8);}
+  treeTmr--;if(treeTmr<=0){spawnTree();treeTmr=rndi(90,180);}
+  branchTmr--;if(branchTmr<=0){
+    // Branch at jump apex height — forces player to stay on ground
+    const jumpH=GY-(PL.JUMP*PL.JUMP)/(2*PL.GRAV); // physics apex
+    const by=jumpH+rndi(10,35); // in the jump zone
+    branches.push({x:W+30,y:by,len:rndi(55,110),angle:rnd(-.18,.18),dead:false});
+    branchTmr=Math.max(90,rndi(150,280)-Math.floor(dist/800)*6);
+  }
+  bodegaTmr--;if(bodegaTmr<=0){
+    bodegas.push({x:W+30,dead:false});
+    bodegaTmr=rndi(650,900);
+  }
+
+  // Avellanas
+  for(const a of avellanas){
+    if(a.dead)continue;
+    a.x-=spd;
+    if(a.x<-30){a.dead=true;continue;}
+    if(!PL.dead&&PL.x<a.x+12&&PL.x+PL.w>a.x&&PL.y-PL.h<a.y+14&&PL.y+6>a.y-14){
+      a.dead=true;
+      if(sack<SACK_MAX){
+        sack++;sackAnim=15;score+=50;
+        part(a.x,a.y,'rgba(200,160,20,',6,3,4,18);
+        const msgs=['🌰+1','¡Avellana!','¡Mía!','¡Rica!'];
+        if(Math.random()>.55)float(a.x,a.y-20,msgs[rndi(0,3)],'#d4a020',8);
+        if(sack===SACK_MAX){float(PL.x+PL.w/2,PL.y-PL.h-18,'¡SACO LLENO! →BODEGA','#ff8800',8);shake(5);}
+      } else {
+        part(a.x,a.y,'rgba(255,100,20,',5,3,4,16);
+        if(Math.random()>.7)float(a.x,a.y-20,'¡No cabe más!','#ff6600',7);
+      }
+    }
+  }
+  avellanas=avellanas.filter(a=>!a.dead);
+
+  // Branches — hit when airborne
+  for(const b of branches){
+    if(b.dead)continue;
+    b.x-=spd;
+    if(b.x<-140){b.dead=true;continue;}
+    if(!PL.dead&&PL.iframes===0&&!PL.gr){
+      // Branch hitbox: horizontal line at b.y
+      const bLeft=b.x-b.len/2-8,bRight=b.x+b.len/2+8;
+      const plTop=PL.y-PL.h,plBot=PL.y;
+      if(PL.x+PL.w>bLeft&&PL.x<bRight&&plTop<b.y+8&&plBot>b.y-8){
+        // HIT — knocked down, lose avellanas
+        const lost=Math.min(sack,rndi(2,4));
+        sack=Math.max(0,sack-lost);
+        score=Math.max(0,score-lost*30);
+        PL.vy=6;PL.iframes=80;shake(10);b.dead=true;
+        part(PL.x+PL.w/2,PL.y-PL.h/2,'rgba(200,160,20,',12,5,6,30);
+        float(PL.x+PL.w/2,PL.y-PL.h-12,`¡RAMA! -${lost}🌰`,'#ff4400',9);
+        if(sack===0&&lives<=0)dieManuel();
+      }
+    }
+  }
+  branches=branches.filter(b=>!b.dead);
+
+  // Bodegas — deposit sack for bonus points
+  for(const b of bodegas){
+    if(b.dead)continue;
+    b.x-=spd*.85; // slightly slower so player can reach it
+    if(b.x<-80){b.dead=true;continue;}
+    if(!PL.dead&&PL.x<b.x+50&&PL.x+PL.w>b.x&&PL.gr){
+      if(sack>0){
+        const bonus=sack*120+(sack===SACK_MAX?500:0);
+        score+=bonus;
+        float(b.x+22,GY-80,`+${bonus}🌰`,'#ffd700',11);
+        part(b.x+22,GY-40,'rgba(255,210,0,',14,5,7,35);
+        shake(6);
+        if(sack===SACK_MAX)float(b.x+22,GY-100,'¡SACO LLENO! BONUS!','#ff8800',10);
+        sack=0;b.dead=true;
+      }
+    }
+  }
+  bodegas=bodegas.filter(b=>!b.dead);
+
+  // Thieves — now also KILL if they empty the sack
+  for(const t of thieves){
+    if(t.dead)continue;t.fr++;t.wFr+=.2;
+    t.x-=t.spd;
+    if(t.x<-80){t.dead=true;continue;}
+    if(PL.dead||PL.iframes>0)continue;
+    const olap=PL.x<t.x+30&&PL.x+PL.w>t.x-10&&Math.abs((PL.y)-(t.y))<55;
+    if(olap){
+      t.stealing=Math.min(t.stealing+1,30);
+      if(t.stealing%18===1){
+        if(sack>0){
+          sack--;score=Math.max(0,score-30);
+          shake(5);
+          part(PL.x+PL.w/2,PL.y-PL.h/2,'rgba(200,100,20,',8,4,5,22);
+          float(PL.x+10,PL.y-PL.h-10,'¡Me roban!','#ff2200',9);
+        } else {
+          // Sack empty → thief ATTACKS and kills Manuel
+          dieManuel();
+          float(PL.x+10,PL.y-PL.h-20,'¡ME ATACA!','#ff0000',12);
+        }
+      }
+    } else {
+      t.stealing=Math.max(t.stealing-1,0);
+    }
+  }
+  thieves=thieves.filter(t=>!t.dead);
+  trees=trees.filter(t=>t.x>-140);
+
+  for(const p of parts){p.x+=p.vx;p.y+=p.vy;p.vy+=.06;p.life--;}
+  parts=parts.filter(p=>p.life>0);
+  for(const f of floats){f.x+=(Math.random()-.5)*.5;f.y+=f.vy;f.life--;}
+  floats=floats.filter(f=>f.life>0);
+  if(shakeT>0)shakeT--;
+  if(sackAnim>0)sackAnim--;
+}
+
+function dieManuel(){
+  if(PL.dead||PL.iframes>0)return;
+  PL.dead=true;PL.deathTmr=80;PL.vy=-10;PL.vx=0;
+  shake(16);part(PL.x+PL.w/2,PL.y-PL.h/2,'rgba(255,100,20,',18,5,8,40);
+}
+
+// ── SCREENS ──
+function drawMenu(){
+  const sky=g.createLinearGradient(0,0,0,GY);sky.addColorStop(0,'#4a8a38');sky.addColorStop(1,'#7ab858');
+  g.fillStyle=sky;g.fillRect(0,0,W,GY);
+  g.fillStyle='#5a4020';g.fillRect(0,GY,W,H-GY);
+  g.fillStyle='#3a6a20';g.fillRect(0,GY,W,5);
+  // Trees
+  for(const tx of [50,200,560,720]){
+    g.fillStyle='#5a3010';g.fillRect(tx+12,GY-80,12,80);
+    g.fillStyle='#2a6a18';g.beginPath();g.ellipse(tx+18,GY-90,30,50,0,0,Math.PI*2);g.fill();
+    g.fillStyle='#38882a';g.beginPath();g.ellipse(tx+18,GY-105,22,38,0,0,Math.PI*2);g.fill();
+  }
+  // Manuel on menu
+  const sy=PL.y-PL.h;
+  PL.wFr+=.1;
+  drawManuel(370,GY,0,false);
+  // Floating avellana beside
+  const bob=Math.sin(tick*.05)*8;
+  drawAvellana({x:470,y:GY-60+bob,bob:0,fromTree:true,dead:false});
+
+  g.fillStyle='rgba(0,0,0,.55)';g.fillRect(0,0,W,38);
+  g.textAlign='center';
+  g.fillStyle='#d4a020';g.font='10px "Press Start 2P",monospace';g.fillText('THE PANTHERS GAMES',W/2,24);
+  g.fillStyle='rgba(0,0,0,.6)';g.fillRect(W/2-280,65,560,140);
+  g.strokeStyle='#8B4513';g.lineWidth=2;g.strokeRect(W/2-280,65,560,140);
+  g.fillStyle='#d4a020';g.font='22px "Press Start 2P",monospace';g.fillText('MANUEL ZAPATA',W/2,102);
+  g.fillStyle='#c8c8a8';g.font='10px "Press Start 2P",monospace';g.fillText('El Avellanero',W/2,124);
+  g.fillStyle='rgba(255,220,100,.6)';g.font='7px "Press Start 2P",monospace';
+  g.fillText('🌰 Recoge avellanas  ·  👜 Saco max '+SACK_MAX+'  ·  🏚 Deposita en Bodega  ·  🌿 ¡Cuidado con las ramas!',W/2,154);
+  if(Math.floor(tick/28)%2===0){g.fillStyle='#fff';g.font='8px "Press Start 2P",monospace';g.fillText('ESPACIO / CLICK para empezar',W/2,182);}
+  if(hi>0){g.fillStyle='#888';g.font='7px "Press Start 2P",monospace';g.fillText('MEJOR: '+Math.floor(hi),W/2,200);}
+  g.textAlign='left';
+}
+function drawGameOver(){
+  g.fillStyle='rgba(0,0,0,.78)';g.fillRect(0,0,W,H);
+  g.textAlign='center';
+  g.fillStyle='#ff4400';g.font='20px "Press Start 2P",monospace';g.fillText('¡SE CAYÓ EL SACO!',W/2,H/2-65);
+  g.fillStyle='#aaa';g.font='8px "Press Start 2P",monospace';g.fillText('(Y Manuel con él)',W/2,H/2-38);
+  g.fillStyle='#d4a020';g.font='12px "Press Start 2P",monospace';g.fillText('AVELLANAS: '+Math.floor(score),W/2,H/2+4);
+  g.fillStyle='#777';g.font='8px "Press Start 2P",monospace';g.fillText('MEJOR: '+Math.floor(hi),W/2,H/2+26);
+  if(Math.floor(tick/28)%2===0){g.fillStyle='white';g.font='8px "Press Start 2P",monospace';g.fillText('ESPACIO / CLICK para reintentar',W/2,H/2+62);}
+  g.textAlign='left';
+}
+
+// ── RENDER ──
+function render(){
+  g.clearRect(0,0,W,H);
+  g.save();
+  if(shakeT>0)g.translate((Math.random()-.5)*shakeT*.7,(Math.random()-.5)*shakeT*.7);
+  if(GS==='menu'){drawMenu();tick++;}
+  else{
+    drawBG();
+    for(const a of avellanas)drawAvellana(a);
+    for(const b of bodegas)drawBodega(b);
+    for(const t of thieves)drawThief(t);
+    for(const b of branches)drawBranch(b);
+    drawParts();
+    drawManuel(PL.x,PL.y,PL.iframes,PL.dead);
+    drawHUD();
+    if(GS==='gameover')drawGameOver();
+  }
+  g.restore();
+}
+
+function startGame(){
+  Object.assign(PL,{x:130,y:GY,vy:0,gr:true,wFr:0,iframes:0,dead:false,deathTmr:0});
+  avellanas=[];thieves=[];parts=[];floats=[];trees=[];branches=[];bodegas=[];
+  avTmr=60;thTmr=280;treeTmr=120;branchTmr=180;bodegaTmr=800;
+  score=0;dist=0;spd=3.2;sack=0;sackAnim=0;shakeT=0;
+  GS='playing';
+}
+
+function loop(){update();render();requestAnimationFrame(loop);}
+loop();
+</script>
+</body>
+</html>
