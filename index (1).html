@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Panthers Games</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #f5c518;
+  --gold2: #e8a900;
+  --red: #ff2200;
+  --dark: #080808;
+  --dark2: #0f0f0f;
+  --dark3: #161616;
+  --text: #e8e0d0;
+  --muted: #666;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--dark);
+  color:var(--text);
+  font-family:'Rajdhani',sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+  cursor:default;
+}
+
+/* ── SCANLINE OVERLAY ── */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px);
+  pointer-events:none;z-index:9999;
+}
+
+/* ── ANIMATED GRID BG ── */
+#grid-bg{
+  position:fixed;inset:0;z-index:0;
+  background-image:
+    linear-gradient(rgba(245,197,24,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245,197,24,.04) 1px, transparent 1px);
+  background-size:60px 60px;
+  animation:gridMove 20s linear infinite;
+}
+@keyframes gridMove{from{background-position:0 0;}to{background-position:60px 60px;}}
+
+/* ── HERO ── */
+header{
+  position:relative;z-index:1;
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:40px 20px;
+  text-align:center;
+  overflow:hidden;
+}
+header::after{
+  content:'';
+  position:absolute;bottom:0;left:0;right:0;height:200px;
+  background:linear-gradient(transparent,var(--dark));
+  pointer-events:none;
+}
+
+/* Panther silhouette (CSS) */
+.panther-icon{
+  font-size:80px;
+  margin-bottom:16px;
+  display:block;
+  animation:float 3s ease-in-out infinite;
+  filter:drop-shadow(0 0 30px rgba(245,197,24,.5));
+}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-14px);}}
+
+.studio-label{
+  font-family:'Rajdhani',sans-serif;
+  font-size:clamp(11px,2vw,15px);
+  font-weight:700;
+  letter-spacing:8px;
+  text-transform:uppercase;
+  color:var(--gold);
+  opacity:.7;
+  margin-bottom:12px;
+  animation:fadeUp .6s ease both;
+}
+.main-title{
+  font-family:'Black Ops One',sans-serif;
+  font-size:clamp(48px,10vw,110px);
+  line-height:.95;
+  letter-spacing:-2px;
+  background:linear-gradient(180deg,#fff 0%,var(--gold) 55%,var(--gold2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 4px 30px rgba(245,197,24,.3));
+  animation:fadeUp .7s .1s ease both;
+}
+.main-subtitle{
+  font-size:clamp(14px,2.5vw,22px);
+  font-weight:600;
+  letter-spacing:4px;
+  color:var(--muted);
+  text-transform:uppercase;
+  margin-top:10px;
+  animation:fadeUp .7s .2s ease both;
+}
+.hero-divider{
+  width:120px;height:3px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+  margin:28px auto;
+  animation:fadeUp .7s .3s ease both;
+}
+.hero-tagline{
+  font-size:clamp(14px,2vw,18px);
+  color:rgba(232,224,208,.55);
+  max-width:500px;
+  line-height:1.6;
+  animation:fadeUp .7s .4s ease both;
+}
+.scroll-hint{
+  position:absolute;bottom:38px;left:50%;transform:translateX(-50%);
+  font-size:11px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;
+  animation:pulse 2s ease-in-out infinite;
+  z-index:2;
+}
+@keyframes pulse{0%,100%{opacity:.3;}50%{opacity:.8;}}
+.scroll-hint::after{content:'↓';display:block;text-align:center;margin-top:4px;font-size:16px;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── GAMES SECTION ── */
+#games{
+  position:relative;z-index:1;
+  padding:80px 20px 120px;
+  max-width:1100px;
+  margin:0 auto;
+}
+.section-title{
+  font-family:'Black Ops One',sans-serif;
+  font-size:clamp(22px,4vw,36px);
+  letter-spacing:2px;
+  color:var(--gold);
+  text-align:center;
+  margin-bottom:8px;
+}
+.section-sub{
+  text-align:center;color:var(--muted);
+  font-size:14px;letter-spacing:3px;text-transform:uppercase;
+  margin-bottom:60px;
+}
+
+.games-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:32px;
+}
+
+/* ── GAME CARD ── */
+.game-card{
+  position:relative;
+  background:var(--dark2);
+  border:1px solid rgba(245,197,24,.12);
+  border-radius:4px;
+  overflow:hidden;
+  transition:transform .3s ease, border-color .3s ease, box-shadow .3s ease;
+  cursor:pointer;
+  text-decoration:none;
+  display:block;
+  animation:fadeUp .7s ease both;
+}
+.game-card:hover{
+  transform:translateY(-8px) scale(1.01);
+  border-color:rgba(245,197,24,.5);
+  box-shadow:0 24px 60px rgba(0,0,0,.6), 0 0 40px rgba(245,197,24,.12);
+}
+.game-card:nth-child(2){animation-delay:.12s;}
+
+/* Card preview canvas area */
+.card-preview{
+  width:100%;height:220px;
+  position:relative;overflow:hidden;
+  background:var(--dark3);
+}
+.card-canvas{
+  width:100%;height:100%;display:block;
+}
+.card-play-overlay{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0);
+  transition:background .25s ease;
+}
+.game-card:hover .card-play-overlay{background:rgba(0,0,0,.45);}
+.play-btn{
+  width:64px;height:64px;
+  border-radius:50%;
+  border:3px solid var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transform:scale(.7);
+  transition:opacity .25s ease, transform .25s ease;
+  background:rgba(245,197,24,.12);
+}
+.game-card:hover .play-btn{opacity:1;transform:scale(1);}
+.play-btn::after{
+  content:'';
+  border-style:solid;
+  border-width:12px 0 12px 22px;
+  border-color:transparent transparent transparent var(--gold);
+  margin-left:4px;
+}
+
+.card-body{padding:24px 24px 28px;}
+.card-genre{
+  font-size:10px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--gold);opacity:.7;
+  margin-bottom:8px;
+  display:flex;align-items:center;gap:8px;
+}
+.card-genre::before{content:'';width:20px;height:1px;background:var(--gold);opacity:.5;}
+.card-title{
+  font-family:'Black Ops One',sans-serif;
+  font-size:clamp(22px,4vw,30px);
+  line-height:1.1;
+  color:#fff;
+  margin-bottom:6px;
+}
+.card-title span{color:var(--gold);}
+.card-tagline{
+  font-size:13px;color:var(--muted);
+  font-style:italic;margin-bottom:16px;
+  letter-spacing:.5px;
+}
+.card-desc{
+  font-size:15px;line-height:1.65;
+  color:rgba(232,224,208,.65);
+  margin-bottom:20px;
+}
+.card-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px;}
+.tag{
+  font-size:10px;letter-spacing:1px;text-transform:uppercase;
+  padding:4px 10px;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:2px;
+  color:rgba(255,255,255,.45);
+}
+.card-cta{
+  display:inline-flex;align-items:center;gap:10px;
+  font-family:'Black Ops One',sans-serif;
+  font-size:13px;letter-spacing:2px;
+  color:var(--dark);
+  background:var(--gold);
+  padding:11px 22px;
+  border-radius:2px;
+  text-decoration:none;
+  transition:background .2s, transform .15s;
+}
+.card-cta:hover{background:#ffe040;transform:translateX(3px);}
+.card-cta::after{content:'→';}
+
+/* Card accent bar */
+.card-accent{
+  position:absolute;top:0;left:0;right:0;height:3px;
+}
+.card-1 .card-accent{background:linear-gradient(90deg,#f39c12,#e67e22,#f39c12);}
+.card-2 .card-accent{background:linear-gradient(90deg,#ff2200,#ff6600,#ff2200);}
+
+/* Number badge */
+.card-num{
+  position:absolute;top:14px;right:14px;
+  font-family:'Black Ops One',sans-serif;
+  font-size:52px;line-height:1;
+  color:rgba(255,255,255,.04);
+  pointer-events:none;
+}
+
+/* ── FOOTER ── */
+footer{
+  position:relative;z-index:1;
+  border-top:1px solid rgba(245,197,24,.08);
+  padding:40px 20px;
+  text-align:center;
+}
+.footer-logo{
+  font-family:'Black Ops One',sans-serif;
+  font-size:20px;
+  color:var(--gold);
+  opacity:.5;
+  letter-spacing:2px;
+  margin-bottom:8px;
+}
+.footer-copy{font-size:12px;color:var(--muted);letter-spacing:1px;}
+
+/* ── CANVAS ANIMATIONS ── */
+#cv1{background:#1a120a;}
+#cv2{background:#080808;}
+#cv3{background:#08080f;}
+.card-1 .card-accent{background:linear-gradient(90deg,#f39c12,#e67e22,#f39c12);}
+.card-2 .card-accent{background:linear-gradient(90deg,#ff2200,#ff6600,#ff2200);}
+.card-3 .card-accent{background:linear-gradient(90deg,#cc00ff,#7700ff,#cc00ff);}
+
+/* coming soon card */
+.card-soon{
+  border-style:dashed;
+  opacity:.4;
+  pointer-events:none;
+}
+.soon-inner{
+  height:100%;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:12px;padding:40px;
+  min-height:300px;
+}
+.soon-icon{font-size:48px;filter:grayscale(1);}
+.soon-txt{
+  font-family:'Black Ops One',sans-serif;
+  font-size:18px;letter-spacing:3px;color:var(--muted);
+}
+
+</style>
+</head>
+<body>
+
+<div id="grid-bg"></div>
+
+<!-- HERO -->
+<header>
+  <span class="panther-icon">🐆</span>
+  <p class="studio-label">Estudio Independiente</p>
+  <h1 class="main-title">The Panthers<br>Games</h1>
+  <p class="main-subtitle">Juegos con sabor chileno</p>
+  <div class="hero-divider"></div>
+  <p class="hero-tagline">Juegos hechos con garra, humor y mucho corazón. Directo al navegador, sin instalaciones.</p>
+  <div class="scroll-hint">Ver juegos</div>
+</header>
+
+<!-- GAMES -->
+<section id="games">
+  <h2 class="section-title">Nuestros Juegos</h2>
+  <p class="section-sub">3 títulos disponibles · más en camino</p>
+
+  <div class="games-grid">
+
+    <!-- PEZOA -->
+    <a class="game-card card-1" href="pezoa_tractor.html">
+      <div class="card-accent"></div>
+      <div class="card-num">01</div>
+      <div class="card-preview">
+        <canvas id="cv1" class="card-canvas" width="500" height="220"></canvas>
+        <div class="card-play-overlay"><div class="play-btn"></div></div>
+      </div>
+      <div class="card-body">
+        <p class="card-genre">Runner · Pixel Art</p>
+        <h3 class="card-title">Pezoa <span>🚜</span></h3>
+        <p class="card-tagline">El Tractor del Sabor</p>
+        <p class="card-desc">Un hombre de 40 años, barba y alma campesina sube a su tractor chatarra. Salta obstáculos y recoge piezas para modernizarse. ¿Llegará al Tractor del Sabor?</p>
+        <div class="card-tags">
+          <span class="tag">Endless runner</span>
+          <span class="tag">Un jugador</span>
+          <span class="tag">Mejoras</span>
+          <span class="tag">5 niveles</span>
+        </div>
+        <span class="card-cta">JUGAR AHORA &nbsp;</span>
+      </div>
+    </a>
+
+    <!-- NICOLAS -->
+    <a class="game-card card-2" href="hasta_atras_nicolas.html">
+      <div class="card-accent"></div>
+      <div class="card-num">02</div>
+      <div class="card-preview">
+        <canvas id="cv2" class="card-canvas" width="500" height="220"></canvas>
+        <div class="card-play-overlay"><div class="play-btn"></div></div>
+      </div>
+      <div class="card-body">
+        <p class="card-genre">Shooter · Top-Down</p>
+        <h3 class="card-title">Hasta Atrás <span style="color:#ff2200">🔫</span></h3>
+        <p class="card-tagline">Nicolás</p>
+        <p class="card-desc">Nicolás, 2 metros de puro chileno, enfrenta gallinas zombie, vacas locas, toros furiosos y un ganso gigante del juicio. 4 armas. 3 vidas. Muchos "¡hasta atrás!"</p>
+        <div class="card-tags">
+          <span class="tag">Shooter</span>
+          <span class="tag">4 niveles</span>
+          <span class="tag">Jefe final</span>
+          <span class="tag">Ozempic</span>
+        </div>
+        <span class="card-cta" style="background:#ff2200;color:#fff;">JUGAR AHORA &nbsp;</span>
+      </div>
+    </a>
+
+    <!-- SUPER PISCOLINNI -->
+    <a class="game-card card-3" href="super_piscolinni.html">
+      <div class="card-accent"></div>
+      <div class="card-num">03</div>
+      <div class="card-preview">
+        <canvas id="cv3" class="card-canvas" width="500" height="220"></canvas>
+        <div class="card-play-overlay"><div class="play-btn"></div></div>
+      </div>
+      <div class="card-body">
+        <p class="card-genre">Plataformas · Mario Style</p>
+        <h3 class="card-title">Súper <span style="color:#cc00ff">Piscolinni</span></h3>
+        <p class="card-tagline">Las Aventuras de Felipenne</p>
+        <p class="card-desc">Felipenne, el enano de zapatillas blancas, atraviesa una oficina corporativa, la calle, la nieve y un pub lleno de piscolas voladoras. ¡Toma una piscola y crece!</p>
+        <div class="card-tags">
+          <span class="tag">Plataformas</span>
+          <span class="tag">4 niveles</span>
+          <span class="tag">Piscola = poder</span>
+          <span class="tag">3 vidas</span>
+        </div>
+        <span class="card-cta" style="background:#cc00ff;color:#fff;">JUGAR AHORA &nbsp;</span>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p class="footer-logo">🐆 THE PANTHERS GAMES</p>
+  <p class="footer-copy">Todos los derechos reservados · Hecho en Chile con ❤️</p>
+</footer>
+
+<script>
+/* ── PEZOA MINI-PREVIEW (canvas 1) ── */
+(function(){
+  const cv=document.getElementById('cv1');
+  const g=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const GY=175;
+  let fr=0,xOff=0,wx=80,wy=GY,wRot=0;
+  const obs=[{x:340,w:36,h:36,c:'#e8b848'},{x:480,w:14,h:52,c:'#8d6e63'}];
+
+  function draw(){
+    fr++;xOff+=2.2;wRot+=.07;
+    for(const o of obs){o.x-=2.2;if(o.x<-60)o.x=W+60;}
+    // Sky
+    const sky=g.createLinearGradient(0,0,0,GY);sky.addColorStop(0,'#3a7aaa');sky.addColorStop(1,'#8fd4f0');
+    g.fillStyle=sky;g.fillRect(0,0,W,GY);
+    // Hills
+    g.fillStyle='#7aaa5a';
+    [[-20,50,180],[160,38,160],[320,55,200],[490,42,160]].forEach(([x,h,w])=>{
+      g.beginPath();g.moveTo(x,GY);g.bezierCurveTo(x+w*.25,GY-h*1.2,x+w*.75,GY-h*1.2,x+w,GY);g.closePath();g.fill();
+    });
+    // Ground
+    g.fillStyle='#6d4c41';g.fillRect(0,GY,W,H-GY);
+    g.fillStyle='#56ab2f';g.fillRect(0,GY,W,4);
+    // Obstacles
+    for(const o of obs){g.fillStyle=o.c;g.fillRect(o.x,GY-o.h,o.w,o.h);}
+    // Tractor body (simple)
+    const tx=wx,ty=wy;
+    // Rear wheel
+    g.fillStyle='#1a1a1a';g.beginPath();g.arc(tx+22,ty-22,22,0,Math.PI*2);g.fill();
+    g.strokeStyle='#555';g.lineWidth=2;g.beginPath();g.arc(tx+22,ty-22,14,0,Math.PI*2);g.stroke();
+    for(let i=0;i<4;i++){const a=wRot+i/4*Math.PI*2;g.strokeStyle='#888';g.lineWidth=2;g.beginPath();g.moveTo(tx+22,ty-22);g.lineTo(tx+22+Math.cos(a)*12,ty-22+Math.sin(a)*12);g.stroke();}
+    // Front wheel
+    g.fillStyle='#1a1a1a';g.beginPath();g.arc(tx+73,ty-13,13,0,Math.PI*2);g.fill();
+    // Body
+    g.fillStyle='#7a3310';g.fillRect(tx+14,ty-42,54,22);
+    g.fillStyle='#5e2208';g.fillRect(tx+10,ty-60,38,20);
+    g.fillStyle='rgba(90,140,160,.5)';g.fillRect(tx+14,ty-55,12,12);g.fillRect(tx+30,ty-55,14,12);
+    // Smoke
+    if(fr%4===0){
+      g.fillStyle='rgba(80,80,80,.25)';
+      g.beginPath();g.arc(tx+58,ty-64+Math.random()*4,6+Math.random()*4,0,Math.PI*2);g.fill();
+    }
+    // Pezoa (simple silhouette)
+    g.fillStyle='#cc3300';g.fillRect(tx+26,ty-72,14,18);
+    g.fillStyle='#f5d020';g.beginPath();g.arc(tx+33,ty-80,10,0,Math.PI*2);g.fill();
+    g.fillStyle='#3e2714';g.beginPath();g.ellipse(tx+33,ty-86,11,4,0,0,Math.PI*2);g.fill();
+    // Title overlay
+    g.fillStyle='rgba(0,0,0,.35)';g.fillRect(0,0,W,40);
+    g.fillStyle='#f39c12';g.font='bold 15px "Black Ops One",monospace';g.textAlign='center';
+    g.fillText('🚜 PEZOA — EL TRACTOR DEL SABOR',W/2,26);
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ── NICOLAS MINI-PREVIEW (canvas 2) ── */
+(function(){
+  const cv=document.getElementById('cv2');
+  const g=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  let fr=0;
+  const enemies=[
+    {x:380,y:90,type:0,fr:0},{x:120,y:150,type:1,fr:20},
+    {x:440,y:160,type:0,fr:40},{x:60,y:70,type:2,fr:10},
+    {x:300,y:60,type:1,fr:30},{x:220,y:180,type:2,fr:50},
+  ];
+  const bullets=[];
+  let shootT=0;
+
+  function drawBg(){
+    g.fillStyle='#081504';g.fillRect(0,0,W,H);
+    g.fillStyle='#102008';
+    for(let x=0;x<W;x+=44)for(let y=0;y<H;y+=44)if(((x/44)+(y/44))%2===0)g.fillRect(x,y,44,44);
+    g.strokeStyle='rgba(255,255,255,.03)';g.lineWidth=1;
+    for(let x=0;x<W;x+=44){g.beginPath();g.moveTo(x,0);g.lineTo(x,H);g.stroke();}
+    for(let y=0;y<H;y+=44){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke();}
+  }
+  function drawEnemy(e){
+    g.save();g.translate(e.x,e.y);
+    const w=Math.sin(e.fr*.2)*5;
+    if(e.type===0){// chicken
+      g.fillStyle='#4a7a35';g.beginPath();g.ellipse(w*.2,0,14,10,0,0,Math.PI*2);g.fill();
+      g.beginPath();g.arc(12,0,9,0,Math.PI*2);g.fill();
+      g.fillStyle='#cc1100';g.beginPath();g.moveTo(8,-8);g.lineTo(12,-14);g.lineTo(16,-8);g.lineTo(16,0);g.lineTo(8,0);g.closePath();g.fill();
+      g.fillStyle='#ff0000';g.beginPath();g.arc(10,-2,3,0,Math.PI*2);g.fill();g.beginPath();g.arc(15,-2,3,0,Math.PI*2);g.fill();
+    } else if(e.type===1){// cow
+      g.fillStyle='#f0f0f0';g.beginPath();g.ellipse(0,0,22,14,0,0,Math.PI*2);g.fill();
+      g.fillStyle='#111';g.beginPath();g.ellipse(-7,-3,8,6,-.3,0,Math.PI*2);g.fill();
+      g.fillStyle='#f0f0f0';g.beginPath();g.ellipse(20,0,14,10,0,0,Math.PI*2);g.fill();
+      const es=e.fr*.14;
+      g.fillStyle='#fff';g.beginPath();g.arc(18,-4,5,0,Math.PI*2);g.fill();g.beginPath();g.arc(24,-4,5,0,Math.PI*2);g.fill();
+      g.fillStyle='#111';g.beginPath();g.arc(18+Math.cos(es)*2,-4+Math.sin(es)*2,2.5,0,Math.PI*2);g.fill();
+      g.beginPath();g.arc(24+Math.cos(es+2)*2,-4+Math.sin(es+2)*2,2.5,0,Math.PI*2);g.fill();
+    } else {// bull
+      g.fillStyle='#4a2e12';g.beginPath();g.ellipse(0,0,24,16,0,0,Math.PI*2);g.fill();
+      g.beginPath();g.ellipse(20,0,16,12,0,0,Math.PI*2);g.fill();
+      g.fillStyle='#f0c020';g.beginPath();g.moveTo(16,-12);g.lineTo(6,-24);g.lineTo(10,-8);g.closePath();g.fill();
+      g.beginPath();g.moveTo(16,12);g.lineTo(6,24);g.lineTo(10,8);g.closePath();g.fill();
+      g.fillStyle='#ff0000';g.beginPath();g.arc(18,-4,5,0,Math.PI*2);g.fill();g.beginPath();g.arc(24,-4,5,0,Math.PI*2);g.fill();
+    }
+    g.restore();
+  }
+  function drawNic(x,y){
+    g.save();g.translate(x,y);
+    const ang=Math.atan2(enemies[0].y-y,enemies[0].x-x);
+    g.rotate(ang);
+    g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(0,4,16,5,0,0,Math.PI*2);g.fill();
+    g.fillStyle='#1a4488';g.fillRect(-20,-7,10,6);g.fillRect(-20,1,10,6);
+    g.fillStyle='#cc2200';g.fillRect(-12,-11,24,22);
+    g.fillStyle='#888';g.fillRect(8,-3,22,6);g.fillRect(28,-2,6,4);
+    g.fillStyle='#6a4a28';g.fillRect(8,3,11,8);
+    g.fillStyle='#f5d020';g.beginPath();g.arc(6,0,14,0,Math.PI*2);g.fill();
+    g.fillStyle='#ffe0b2';g.beginPath();g.ellipse(8,0,10,9,0,0,Math.PI*2);g.fill();
+    g.fillStyle='#1a1a1a';g.beginPath();g.arc(11,-3,2,0,Math.PI*2);g.fill();g.beginPath();g.arc(11,3,2,0,Math.PI*2);g.fill();
+    g.fillStyle='#c8a000';g.fillRect(4,3,3,5);g.fillRect(7,3,3,5);g.fillRect(10,3,3,5);
+    g.restore();
+  }
+
+  function draw(){
+    fr++;
+    drawBg();
+    // Move enemies toward center
+    for(const e of enemies){
+      e.fr++;
+      const dx=240-e.x,dy=110-e.y,d=Math.hypot(dx,dy)||1;
+      e.x+=dx/d*1.2;e.y+=dy/d*1.2;
+      if(Math.hypot(e.x-240,e.y-110)<90){e.x=Math.random()<.5?-30:W+30;e.y=Math.random()*H;}
+      drawEnemy(e);
+    }
+    // Bullets
+    shootT--;if(shootT<=0){
+      shootT=18;
+      const te=enemies[fr%enemies.length];
+      const ang=Math.atan2(te.y-110,te.x-240);
+      bullets.push({x:240,y:110,vx:Math.cos(ang)*8,vy:Math.sin(ang)*8,life:40});
+    }
+    for(const b of bullets){
+      b.x+=b.vx;b.y+=b.vy;b.life--;
+      g.fillStyle='rgba(200,200,200,.9)';g.beginPath();g.arc(b.x,b.y,3,0,Math.PI*2);g.fill();
+    }
+    bullets.splice(0,bullets.filter(b=>b.life<=0).length);
+    drawNic(240,110);
+    // Title overlay
+    g.fillStyle='rgba(0,0,0,.4)';g.fillRect(0,0,W,38);
+    g.fillStyle='#ff2200';g.font='bold 14px "Black Ops One",monospace';g.textAlign='center';
+    g.fillText('🔫 HASTA ATRÁS NICOLÁS',W/2,25);
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ── PISCOLINNI MINI-PREVIEW (canvas 3) ── */
+(function(){
+  const cv=document.getElementById('cv3');
+  if(!cv)return;
+  const g=cv.getContext('2d'),W=cv.width,H=cv.height;
+  let fr=0;
+  const GY=175,TS=36;
+  // Platforms
+  const plats=[[0,175,W],[80,138,110],[220,110,100],[360,138,110],[450,110,100]];
+  // Piscola cups flying
+  const cups=[
+    {x:380,y:80,vy:-1.2,vx:0,bob:0},{x:500,y:100,vy:-1.5,vx:0,bob:1.5},
+  ];
+  // Player (Felipenne)
+  let px=60,py=GY-32,pvx=1.2,pvy=0,big=false,bigT=0,onGround=true;
+  // Enemies (salesmen walking)
+  const enems=[{x:200,y:GY-44,vx:-1.1},{x:350,y:GY-44,vx:-1.4},{x:480,y:GY-44,vx:-0.9}];
+  // ? blocks
+  const qblocks=[{x:148,y:100,hit:false},{x:288,y:72,hit:false}];
+
+  function drawBg(){
+    const sky=g.createLinearGradient(0,0,0,GY);sky.addColorStop(0,'#08080f');sky.addColorStop(1,'#180818');
+    g.fillStyle=sky;g.fillRect(0,0,W,GY);
+    // Neon signs
+    ['🍺 BAR','PISCO SOUR'].forEach((t,i)=>{
+      g.globalAlpha=0.3+Math.sin(fr*.06+i)*.1;
+      g.fillStyle=i===0?'#ff6600':'#dd00ee';g.font='bold 14px serif';g.textAlign='left';
+      g.fillText(t,30+i*190,45+i*18);
+    });
+    g.globalAlpha=1;
+    // Ground
+    g.fillStyle='#1e0e06';g.fillRect(0,GY,W,H-GY);
+    g.fillStyle='#3a1a08';g.fillRect(0,GY,W,4);
+    // Platforms
+    for(const [px2,py2,pw] of plats){
+      if(py2<GY){g.fillStyle='#280e08';g.fillRect(px2,py2,pw,TS*.5);g.fillStyle='#3a1a08';g.fillRect(px2,py2,pw,4);}
+    }
+  }
+  function drawQBlock(qb){
+    g.fillStyle=qb.hit?'#555':'#e8a000';g.fillRect(qb.x,qb.y,TS,TS);
+    g.fillStyle=qb.hit?'#888':'#ffcc00';g.fillRect(qb.x+2,qb.y+2,TS-4,TS/2-2);
+    g.fillStyle=qb.hit?'#666':'#c87000';g.fillRect(qb.x+2,qb.y+TS/2,TS-4,TS/2-2);
+    g.fillStyle=qb.hit?'#aaa':'#fff8cc';g.font='bold 20px serif';g.textAlign='center';
+    g.fillText(qb.hit?'·':'?',qb.x+TS/2+1,qb.y+TS*.74);
+    g.textAlign='left';
+    if(!qb.hit){g.strokeStyle='rgba(255,215,0,.7)';g.lineWidth=2;g.strokeRect(qb.x+1,qb.y+1,TS-2,TS-2);}
+  }
+  function drawPlayer(x,y,big2){
+    const h=big2?52:32,w=22;
+    g.save();g.translate(x,y);
+    g.fillStyle='#fff';g.fillRect(-2,h-8,11,8);g.fillRect(11,h-8,11,8);
+    g.fillStyle='#ff7700';g.fillRect(0,h-6,9,2);g.fillRect(12,h-6,9,2);
+    g.fillStyle='#3355bb';g.fillRect(1,h-(big2?24:14),9,big2?14:8);g.fillRect(11,h-(big2?24:14),9,big2?14:8);
+    g.fillStyle=big2?'#dd2200':'#cc3300';g.fillRect(-2,h-(big2?44:28),w+4,big2?24:16);
+    const hr=big2?16:13,hcy=h-(big2?44:28)-hr-2;
+    g.fillStyle='#f5c090';g.beginPath();g.arc(w/2,hcy+hr,hr,0,Math.PI*2);g.fill();
+    g.fillStyle='#2e1808';g.beginPath();g.arc(w/2,hcy+hr,hr,Math.PI,0);g.fill();g.fillRect(w/2-hr,hcy+hr-4,hr*2,6);
+    g.fillStyle='white';g.fillRect(w/2-8,hcy+hr-3,6,6);g.fillRect(w/2+2,hcy+hr-3,6,6);
+    g.fillStyle='#1a1a99';g.fillRect(w/2-7,hcy+hr-2,4,4);g.fillRect(w/2+3,hcy+hr-2,4,4);
+    g.fillStyle='#1a3399';g.fillRect(w/2-hr-2,hcy+hr-hr+2,hr*2+4,big2?6:5);
+    g.fillStyle='#122280';g.fillRect(w/2-(big2?10:8),hcy+hr-hr-(big2?11:9),big2?20:16,big2?13:10);
+    g.restore();
+  }
+  function drawCup(cx,cy){
+    g.save();g.translate(cx,cy);
+    g.fillStyle='rgba(220,235,255,.22)';g.beginPath();g.moveTo(2,0);g.lineTo(14,0);g.lineTo(12,20);g.lineTo(4,20);g.closePath();g.fill();
+    g.strokeStyle='rgba(200,230,255,.9)';g.lineWidth=1.5;g.stroke();
+    g.fillStyle='rgba(40,14,4,.9)';g.beginPath();g.moveTo(3,5);g.lineTo(13,5);g.lineTo(12,20);g.lineTo(4,20);g.closePath();g.fill();
+    g.fillStyle='rgba(200,230,255,.45)';g.fillRect(4,2,5,4);
+    g.restore();
+  }
+  function drawSalesman(ex,ey){
+    g.save();g.translate(ex,ey);
+    g.fillStyle='#111';g.fillRect(2,37,8,7);g.fillRect(12,37,8,7);
+    g.fillStyle='#1a2855';g.fillRect(0,18,22,20);
+    g.fillStyle='white';g.fillRect(9,18,4,20);g.fillStyle='#dd1100';g.fillRect(10,20,2,16);
+    g.fillStyle='#8b6914';g.fillRect(24,18,10,8);
+    g.fillStyle='#f5c090';g.beginPath();g.arc(11,8,10,0,Math.PI*2);g.fill();
+    g.fillStyle='#1a0a00';g.beginPath();g.arc(11,8,10,Math.PI,0);g.fill();
+    g.strokeStyle='#1a1a1a';g.lineWidth=1.5;
+    g.strokeRect(3,3,6,5);g.strokeRect(13,3,6,5);
+    g.restore();
+  }
+
+  function draw(){
+    fr++;
+    drawBg();
+    for(const qb of qblocks)drawQBlock(qb);
+    // Enemies
+    for(const e of enems){
+      e.x+=e.vx;if(e.x<-30)e.x=W+30;if(e.x>W+30)e.x=-30;
+      drawSalesman(e.x,e.y);
+    }
+    // Flying cups
+    for(const c of cups){
+      c.bob+=0.06;c.x-=1.8;if(c.x<-20)c.x=W+30;
+      c.y=80+Math.sin(c.bob)*35;
+      drawCup(c.x,c.y);
+    }
+    // Piscolinni auto-walk
+    px+=pvx;
+    pvy+=0.55;py+=pvy;
+    if(py>=GY-32){py=GY-32;pvy=0;onGround=true;}
+    if(px>W-40||px<0){pvx*=-1;}
+    // Auto jump over enemies
+    for(const e of enems){if(Math.abs(e.x-px)<60&&onGround){pvy=-11;onGround=false;}}
+    // Hit ? blocks from below
+    for(const qb of qblocks){
+      if(!qb.hit&&px+22>qb.x&&px<qb.x+TS&&py<qb.y+TS&&py>qb.y&&pvy<0){
+        qb.hit=true;big=true;bigT=fr+180;pvy=2;
+      }
+    }
+    if(bigT>0&&fr>bigT){big=false;bigT=0;}
+    drawPlayer(px,py-(big?20:0),big);
+    // HUD
+    g.fillStyle='rgba(0,0,0,.45)';g.fillRect(0,0,W,34);
+    g.fillStyle='#cc00ff';g.font='bold 13px "Black Ops One",monospace';g.textAlign='center';
+    g.fillText('🎮 SÚPER PISCOLINNI',W/2,22);
+    g.fillStyle='rgba(200,180,255,.5)';g.font='7px monospace';
+    g.fillText('Las Aventuras de Felipenne',W/2,32);
+    g.textAlign='left';
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
